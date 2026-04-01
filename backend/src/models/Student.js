@@ -64,8 +64,6 @@ const studentSchema = new mongoose.Schema(
 );
 
 studentSchema.index({ course: 1, currentYear: 1 });
-studentSchema.index({ mobile: 1 });
-studentSchema.index({ studentId: 1 });
 studentSchema.index({ isGraduated: 1, isActive: 1 });
 
 studentSchema.pre('save', async function (next) {
