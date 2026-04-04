@@ -302,6 +302,8 @@ function StudentModal({ courses, student, onClose, onSubmit, isLoading, onViewHi
       dateOfBirth: student.dateOfBirth ? student.dateOfBirth.slice(0, 10) : '',
       guardianName: student.guardianName,
       guardianMobile: student.guardianMobile,
+      caste: student.caste || '',
+      subCaste: student.subCaste || '',
     } : {},
   });
 
@@ -430,6 +432,18 @@ function StudentModal({ courses, student, onClose, onSubmit, isLoading, onViewHi
                 <input type="tel" className="form-control w-full" placeholder="9876543200" maxLength={10}
                   {...register('guardianMobile', { pattern: { value: /^[6-9]\d{9}$/, message: 'Invalid mobile' } })} />
                 {errors.guardianMobile && <p className="form-error">{errors.guardianMobile.message}</p>}
+              </div>
+            </div>
+            <div className="grid-2">
+              <div className="form-group">
+                <label className="form-label">Caste</label>
+                <input className="form-control w-full" placeholder="e.g. OBC, SC, ST, General"
+                  {...register('caste')} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Sub-Caste</label>
+                <input className="form-control w-full" placeholder="e.g. Vokkaliga, Lingayat"
+                  {...register('subCaste')} />
               </div>
             </div>
           </form>

@@ -41,6 +41,8 @@ const studentSchema = new mongoose.Schema(
     },
     guardianName: { type: String, trim: true },
     guardianMobile: { type: String, match: /^[6-9]\d{9}$/ },
+    caste: { type: String, trim: true },
+    subCaste: { type: String, trim: true },
     profilePhoto: { type: String },
     isActive: { type: Boolean, default: true },
     isGraduated: { type: Boolean, default: false },
