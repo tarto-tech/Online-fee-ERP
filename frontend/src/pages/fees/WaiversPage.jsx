@@ -79,6 +79,11 @@ export default function WaiversPage() {
                   </td>
                   <td>
                     <div style={{ maxWidth: 180, fontSize: 13 }}>{w.reason}</div>
+                    {w.installmentSplit && (
+                      <div style={{ fontSize: 11, marginTop: 4, color: '#4f46e5', fontWeight: 600 }}>
+                        Split: {w.installmentSplit.first}% / {w.installmentSplit.second}%
+                      </div>
+                    )}
                   </td>
                   <td className="text-secondary text-sm">{w.grantedBy?.name || w.grantedBy?.email}</td>
                   <td>
@@ -169,11 +174,18 @@ function WaiverModal({ onClose, onSuccess }) {
 
   const onSubmit = async (formData) => {
     try {
+      const first = parseInt(formData.splitFirst);
+      const second = parseInt(formData.splitSecond);
+      const hasSplit = formData.enableSplit && first && second;
+      if (hasSplit && first + second !== 100) {
+        toast.error('Installment split must add up to 100%'); return;
+      }
       await feeWaiversAPI.create({
         studentId: selectedStudent._id,
         feeStructureId: feeStructure._id,
         discountAmount: parseFloat(formData.discountAmount),
         reason: formData.reason,
+        ...(hasSplit && { installmentSplit: { first, second } }),
       });
       toast.success('Fee waiver granted successfully');
       onSuccess();
@@ -260,6 +272,40 @@ function WaiverModal({ onClose, onSuccess }) {
                 {errors.reason && <p className="form-error">{errors.reason.message}</p>}
               </div>
             </div>
+            <div className="form-group">
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+                <input type="checkbox" {...register('enableSplit')} disabled={!feeStructure} />
+                Set custom installment split (default is 50% / 50%)
+              </label>
+            </div>
+            {watch('enableSplit') && (
+              <div className="grid-2">
+                <div className="form-group">
+                  <label className="form-label">1st Installment %</label>
+                  <input type="number" className="form-control w-full" placeholder="e.g. 60" min="1" max="99"
+                    {...register('splitFirst', { required: 'Required', min: 1, max: 99 })} />
+                  {errors.splitFirst && <p className="form-error">{errors.splitFirst.message}</p>}
+                </div>
+                <div className="form-group">
+                  <label className="form-label">2nd Installment %</label>
+                  <input type="number" className="form-control w-full" placeholder="e.g. 40" min="1" max="99"
+                    {...register('splitSecond', { required: 'Required', min: 1, max: 99 })} />
+                  {errors.splitSecond && <p className="form-error">{errors.splitSecond.message}</p>}
+                </div>
+                {(() => {
+                  const f = parseInt(watch('splitFirst')) || 0;
+                  const s = parseInt(watch('splitSecond')) || 0;
+                  const total = f + s;
+                  return (
+                    <div style={{ gridColumn: '1 / -1' }}>
+                      <p className={`form-hint`} style={{ color: total === 100 ? '#16a34a' : '#dc2626' }}>
+                        {total === 100 ? `✅ Split: ${f}% + ${s}% = 100%` : `⚠️ Total is ${total}% — must equal 100%`}
+                      </p>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
           </form>
         </div>
         <div className="modal-footer">
@@ -275,20 +321,30 @@ function WaiverModal({ onClose, onSuccess }) {
 }
 
 function EditWaiverModal({ waiver, onClose, onSuccess }) {
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
+  const { register, handleSubmit, watch, formState: { errors, isSubmitting } } = useForm({
     defaultValues: {
       discountAmount: waiver.discountAmount,
       reason: waiver.reason,
       isActive: waiver.isActive,
+      enableSplit: !!waiver.installmentSplit,
+      splitFirst: waiver.installmentSplit?.first ?? 50,
+      splitSecond: waiver.installmentSplit?.second ?? 50,
     },
   });
 
   const onSubmit = async (data) => {
     try {
+      const first = parseInt(data.splitFirst);
+      const second = parseInt(data.splitSecond);
+      const hasSplit = data.enableSplit && first && second;
+      if (hasSplit && first + second !== 100) {
+        toast.error('Installment split must add up to 100%'); return;
+      }
       await feeWaiversAPI.update(waiver._id, {
         discountAmount: parseFloat(data.discountAmount),
         reason: data.reason,
         isActive: data.isActive === 'true' || data.isActive === true,
+        installmentSplit: hasSplit ? { first, second } : null,
       });
       toast.success('Waiver updated');
       onSuccess();
@@ -325,6 +381,40 @@ function EditWaiverModal({ waiver, onClose, onSuccess }) {
                 <option value="false">Revoked</option>
               </select>
             </div>
+            <div className="form-group">
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+                <input type="checkbox" {...register('enableSplit')} />
+                Set custom installment split (default is 50% / 50%)
+              </label>
+            </div>
+            {watch('enableSplit') && (
+              <div className="grid-2">
+                <div className="form-group">
+                  <label className="form-label">1st Installment %</label>
+                  <input type="number" className="form-control w-full" min="1" max="99"
+                    {...register('splitFirst', { required: 'Required', min: 1, max: 99 })} />
+                  {errors.splitFirst && <p className="form-error">{errors.splitFirst.message}</p>}
+                </div>
+                <div className="form-group">
+                  <label className="form-label">2nd Installment %</label>
+                  <input type="number" className="form-control w-full" min="1" max="99"
+                    {...register('splitSecond', { required: 'Required', min: 1, max: 99 })} />
+                  {errors.splitSecond && <p className="form-error">{errors.splitSecond.message}</p>}
+                </div>
+                {(() => {
+                  const f = parseInt(watch('splitFirst')) || 0;
+                  const s = parseInt(watch('splitSecond')) || 0;
+                  const total = f + s;
+                  return (
+                    <div style={{ gridColumn: '1 / -1' }}>
+                      <p className="form-hint" style={{ color: total === 100 ? '#16a34a' : '#dc2626' }}>
+                        {total === 100 ? `✅ Split: ${f}% + ${s}% = 100%` : `⚠️ Total is ${total}% — must equal 100%`}
+                      </p>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
           </form>
         </div>
         <div className="modal-footer">
