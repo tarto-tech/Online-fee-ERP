@@ -22,13 +22,21 @@ const calculateLateFee = (feeStructure, installmentNumber) => {
 };
 
 exports.createOrder = catchAsync(async (req, res, next) => {
-  const { feeStructureId, amount, installmentNumber = 1, isPartialPayment = false } = req.body;
+  const {
+    feeStructureId,
+    amount,
+    installmentNumber = 1,
+    isPartialPayment = false,
+  } = req.body;
+
+  // Coerce to proper types — body-parser can sometimes pass strings
+  const isPartial = isPartialPayment === true || isPartialPayment === 'true';
+  const installNum = parseInt(installmentNumber) || 1;
   const student = req.user;
 
   const feeStructure = await FeeStructure.findById(feeStructureId).populate('course', 'name code');
   if (!feeStructure) return next(new AppError('Fee structure not found', 404));
 
-  // Verify student belongs to this fee structure
   if (
     feeStructure.course._id.toString() !== student.course.toString() ||
     feeStructure.year !== student.currentYear
@@ -36,21 +44,19 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     return next(new AppError('Fee structure does not match your course/year', 403));
   }
 
-  const lateFee = calculateLateFee(feeStructure, installmentNumber);
+  const lateFee = calculateLateFee(feeStructure, installNum);
   const waiver = await getStudentWaiver(student._id, feeStructureId);
   const discountAmount = waiver ? waiver.discountAmount : 0;
   const effectiveTotal = feeStructure.totalAmount - discountAmount;
 
   let totalAmount;
-  if (isPartialPayment) {
-    if (amount) {
-      totalAmount = amount; // admin-provided or frontend-calculated
+  if (isPartial) {
+    const parsedAmount = parseFloat(amount);
+    if (parsedAmount && parsedAmount > 0) {
+      totalAmount = parsedAmount;
     } else {
-      // fallback: use installmentSplit from waiver or default 50/50
       const split = waiver?.installmentSplit;
-      const pct = installmentNumber === 1
-        ? (split?.first ?? 50)
-        : (split?.second ?? 50);
+      const pct = installNum === 1 ? (split?.first ?? 50) : (split?.second ?? 50);
       totalAmount = Math.ceil((effectiveTotal * pct) / 100);
     }
     totalAmount += lateFee;
@@ -58,9 +64,13 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     totalAmount = effectiveTotal + lateFee;
   }
 
-  if (totalAmount < 1) return next(new AppError('Invalid payment amount', 400));
+  if (!totalAmount || isNaN(totalAmount) || totalAmount < 1)
+    return next(new AppError('Invalid payment amount', 400));
 
   const amountInPaise = Math.round(totalAmount * 100);
+
+  if (amountInPaise < 100)
+    return next(new AppError('Minimum payable amount is ₹1', 400));
 
   const order = await razorpay.orders.create({
     amount: amountInPaise,
@@ -85,8 +95,8 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     razorpayOrderId: order.id,
     amount: amountInPaise,
     amountInRupees: totalAmount,
-    installmentNumber,
-    isPartialPayment,
+    installmentNumber: installNum,
+    isPartialPayment: isPartial,
     lateFeeApplied: lateFee,
     feeSnapshot: {
       courseName: feeStructure.course.name,
