@@ -11,7 +11,7 @@ const hasPaid = async (studentId, feeStructureId) => {
 };
 
 exports.createWaiver = catchAsync(async (req, res, next) => {
-  const { studentId, feeStructureId, discountAmount, reason } = req.body;
+  const { studentId, feeStructureId, discountAmount, reason, installmentSplit } = req.body;
 
   const student = await Student.findById(studentId).populate('course', 'name code');
   if (!student) return next(new AppError('Student not found', 404));
@@ -22,11 +22,18 @@ exports.createWaiver = catchAsync(async (req, res, next) => {
   if (discountAmount >= feeStructure.totalAmount)
     return next(new AppError('Discount cannot be equal to or more than total fee', 400));
 
+  if (installmentSplit) {
+    const { first, second } = installmentSplit;
+    if (!first || !second || first + second !== 100)
+      return next(new AppError('Installment split must add up to 100%', 400));
+  }
+
   const waiver = await FeeWaiver.create({
     student: studentId,
     feeStructure: feeStructureId,
     discountAmount,
     reason,
+    ...(installmentSplit && { installmentSplit }),
     grantedBy: req.user._id,
   });
 
@@ -45,11 +52,19 @@ exports.updateWaiver = catchAsync(async (req, res, next) => {
   if (await hasPaid(waiver.student, waiver.feeStructure))
     return next(new AppError('Cannot edit waiver — student has already paid using this waiver', 400));
 
-  const { discountAmount, reason, isActive } = req.body;
+  const { discountAmount, reason, isActive, installmentSplit } = req.body;
+
+  if (installmentSplit) {
+    const { first, second } = installmentSplit;
+    if (!first || !second || first + second !== 100)
+      return next(new AppError('Installment split must add up to 100%', 400));
+  }
+
   Object.assign(waiver, {
     ...(discountAmount && { discountAmount }),
     ...(reason && { reason }),
     ...(isActive !== undefined && { isActive }),
+    ...(installmentSplit && { installmentSplit }),
   });
   await waiver.save({ runValidators: true });
   await waiver.populate([

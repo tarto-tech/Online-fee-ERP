@@ -40,6 +40,7 @@ export default function FeeStatusPage({ user }) {
         feeStructureId: feeStructure._id,
         installmentNumber,
         isPartialPayment: isPartial,
+        // no amount sent — backend calculates from installmentSplit or defaults to 50/50
       });
       const { orderId, amount, keyId, studentName, studentEmail, studentMobile } = orderRes.data;
       const options = {
@@ -224,8 +225,23 @@ export default function FeeStatusPage({ user }) {
                 {payLoading ? '⏳ Processing...' : `💳 Pay Full Amount — ${fmt(pendingAmount + lateFeeApplicable)}`}
               </button>
               <div style={S.installRow}>
-                <button onClick={() => handlePay(1, true)} disabled={payLoading} style={S.installBtn}>Pay 1st Installment</button>
-                <button onClick={() => handlePay(2, true)} disabled={payLoading} style={S.installBtn}>Pay 2nd Installment</button>
+                {(() => {
+                  const split = feeStatus?.installmentSplit;
+                  const pct1 = split?.first ?? 50;
+                  const pct2 = split?.second ?? 50;
+                  const amt1 = Math.ceil(((pendingAmount + lateFeeApplicable) * pct1) / 100);
+                  const amt2 = Math.ceil(((pendingAmount + lateFeeApplicable) * pct2) / 100);
+                  return (
+                    <>
+                      <button onClick={() => handlePay(1, true)} disabled={payLoading} style={S.installBtn}>
+                        Pay 1st Installment ({pct1}%) — {fmt(amt1)}
+                      </button>
+                      <button onClick={() => handlePay(2, true)} disabled={payLoading} style={S.installBtn}>
+                        Pay 2nd Installment ({pct2}%) — {fmt(amt2)}
+                      </button>
+                    </>
+                  );
+                })()}
               </div>
               <p style={S.secureNote}>🔒 Secured by Razorpay · UPI · Cards · Net Banking · Wallets</p>
             </div>

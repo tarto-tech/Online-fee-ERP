@@ -6,6 +6,10 @@ const feeWaiverSchema = new mongoose.Schema(
     feeStructure: { type: mongoose.Schema.Types.ObjectId, ref: 'FeeStructure', required: true },
     discountAmount: { type: Number, required: true, min: 1 },
     reason: { type: String, required: true, trim: true },
+    installmentSplit: {
+      first: { type: Number, min: 1, max: 99 },  // % for 1st installment e.g. 60
+      second: { type: Number, min: 1, max: 99 }, // % for 2nd installment e.g. 40
+    },
     grantedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin', required: true },
     isActive: { type: Boolean, default: true },
   },

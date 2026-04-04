@@ -40,7 +40,23 @@ exports.createOrder = catchAsync(async (req, res, next) => {
   const waiver = await getStudentWaiver(student._id, feeStructureId);
   const discountAmount = waiver ? waiver.discountAmount : 0;
   const effectiveTotal = feeStructure.totalAmount - discountAmount;
-  const totalAmount = isPartialPayment ? amount : effectiveTotal + lateFee;
+
+  let totalAmount;
+  if (isPartialPayment) {
+    if (amount) {
+      totalAmount = amount; // admin-provided or frontend-calculated
+    } else {
+      // fallback: use installmentSplit from waiver or default 50/50
+      const split = waiver?.installmentSplit;
+      const pct = installmentNumber === 1
+        ? (split?.first ?? 50)
+        : (split?.second ?? 50);
+      totalAmount = Math.ceil((effectiveTotal * pct) / 100);
+    }
+    totalAmount += lateFee;
+  } else {
+    totalAmount = effectiveTotal + lateFee;
+  }
 
   if (totalAmount < 1) return next(new AppError('Invalid payment amount', 400));
 
@@ -222,6 +238,7 @@ exports.getMyFeeStatus = catchAsync(async (req, res, next) => {
       totalFees: feeStructure.totalAmount,
       discountAmount,
       discountReason: waiver?.reason || null,
+      installmentSplit: waiver?.installmentSplit || null,
       effectiveFees: effectiveTotal,
       paidAmount,
       pendingAmount: Math.max(0, effectiveTotal - paidAmount),
