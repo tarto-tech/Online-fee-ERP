@@ -39,7 +39,8 @@ export default function FeeStatusPage({ user }) {
       const split = feeStatus?.installmentSplit;
       const pct1 = split?.first ?? 50;
       const pct2 = split?.second ?? 50;
-      const base = (feeStatus?.pendingAmount || 0) + (feeStatus?.lateFeeApplicable || 0);
+      // Always calculate from full effective fees — not pendingAmount
+      const base = (feeStatus?.effectiveFees || 0) + (feeStatus?.lateFeeApplicable || 0);
 
       // Calculate amount to send for installments
       let amount;
@@ -236,25 +237,51 @@ export default function FeeStatusPage({ user }) {
               <button onClick={() => handlePay(1, false)} disabled={payLoading} style={S.payBtn}>
                 {payLoading ? '⏳ Processing...' : `💳 Pay Full Amount — ${fmt(pendingAmount + lateFeeApplicable)}`}
               </button>
-              <div style={S.installRow}>
-                {(() => {
-                  const split = feeStatus?.installmentSplit;
-                  const pct1 = split?.first ?? 50;
-                  const pct2 = split?.second ?? 50;
-                  const amt1 = Math.ceil(((pendingAmount + lateFeeApplicable) * pct1) / 100);
-                  const amt2 = Math.ceil(((pendingAmount + lateFeeApplicable) * pct2) / 100);
-                  return (
-                    <>
+
+              {/* Installment buttons — track which installments already paid */}
+              {(() => {
+                const inst1Paid = payments.some((p) => p.isPartialPayment && p.installmentNumber === 1);
+                const inst2Paid = payments.some((p) => p.isPartialPayment && p.installmentNumber === 2);
+
+                // Fixed installment amounts based on TOTAL effective fees (not pendingAmount)
+                const split = feeStatus?.installmentSplit;
+                const pct1 = split?.first ?? 50;
+                const pct2 = split?.second ?? 50;
+                const base = effectiveFees + lateFeeApplicable;
+                const amt1 = Math.ceil((base * pct1) / 100);
+                const amt2 = Math.ceil((base * pct2) / 100);
+
+                // Both paid via installments — nothing to show
+                if (inst1Paid && inst2Paid) return null;
+
+                return (
+                  <div style={S.installRow}>
+                    {/* 1st installment — show only if not yet paid */}
+                    {!inst1Paid && (
                       <button onClick={() => handlePay(1, true)} disabled={payLoading} style={S.installBtn}>
                         Pay 1st Installment ({pct1}%) — {fmt(amt1)}
                       </button>
+                    )}
+                    {inst1Paid && (
+                      <div style={S.installPaid}>✅ 1st Installment Paid — {fmt(amt1)}</div>
+                    )}
+
+                    {/* 2nd installment — show only if 1st is paid and 2nd not yet paid */}
+                    {inst1Paid && !inst2Paid && (
                       <button onClick={() => handlePay(2, true)} disabled={payLoading} style={S.installBtn}>
                         Pay 2nd Installment ({pct2}%) — {fmt(amt2)}
                       </button>
-                    </>
-                  );
-                })()}
-              </div>
+                    )}
+                    {!inst1Paid && (
+                      <div style={{ ...S.installPaid, background: '#f3f4f6', color: '#9ca3af', border: '1px solid #e5e7eb' }}>
+                        🔒 2nd Installment — {fmt(amt2)}
+                        <div style={{ fontSize: 10, marginTop: 2 }}>Pay 1st installment first</div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
               <p style={S.secureNote}>🔒 Secured by Razorpay · UPI · Cards · Net Banking · Wallets</p>
             </div>
           ) : (
@@ -340,6 +367,7 @@ const S = {
   payBtn: { padding: '14px', background: '#4f46e5', color: '#fff', border: 'none', borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: 'pointer', width: '100%' },
   installRow: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8 },
   installBtn: { padding: '11px', background: '#eef2ff', color: '#4f46e5', border: '1px solid #c7d2fe', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer' },
+  installPaid: { padding: '11px', background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0', borderRadius: 10, fontSize: 13, fontWeight: 600, textAlign: 'center' },
   secureNote: { textAlign: 'center', fontSize: 11, color: '#9ca3af', marginTop: 4 },
   paidBadge: { marginTop: 16, padding: 14, background: '#d1fae5', borderRadius: 12, textAlign: 'center', color: '#065f46', fontWeight: 700, fontSize: 14 },
   downloadBtn: { padding: '5px 10px', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 6, fontSize: 11, color: '#374151', cursor: 'pointer', whiteSpace: 'nowrap' },
