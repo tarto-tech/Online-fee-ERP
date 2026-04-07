@@ -36,11 +36,23 @@ export default function FeeStatusPage({ user }) {
     if (!feeStructure) return;
     setPayLoading(true);
     try {
+      const split = feeStatus?.installmentSplit;
+      const pct1 = split?.first ?? 50;
+      const pct2 = split?.second ?? 50;
+      const base = (feeStatus?.pendingAmount || 0) + (feeStatus?.lateFeeApplicable || 0);
+
+      // Calculate amount to send for installments
+      let amount;
+      if (isPartial) {
+        const pct = installmentNumber === 1 ? pct1 : pct2;
+        amount = Math.ceil((base * pct) / 100);
+      }
+
       const orderRes = await api.post('/payments/create-order', {
         feeStructureId: feeStructure._id,
         installmentNumber,
         isPartialPayment: isPartial,
-        // no amount sent — backend calculates from installmentSplit or defaults to 50/50
+        ...(isPartial && amount > 0 && { amount }),
       });
       const { orderId, amount, keyId, studentName, studentEmail, studentMobile } = orderRes.data;
       const options = {
