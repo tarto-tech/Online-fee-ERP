@@ -5,6 +5,7 @@ const Course = require('../models/Course');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/AppError');
 const { sendEmail } = require('../services/emailService');
+const logger = require('../utils/logger');
 
 const STUDENT_PORTAL_URL = 'https://student-portal-flame-seven.vercel.app';
 
@@ -60,7 +61,7 @@ const sendWelcomeEmail = (student) => {
         </div>
       </div>
     `,
-  }).catch((err) => console.error(`Email failed for ${student.email}:`, err.message));
+  }).catch((err) => logger.error(`Welcome email failed for ${student.email}: ${err.message}`));
 };
 
 const buildFilter = (query) => {
