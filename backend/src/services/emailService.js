@@ -9,10 +9,19 @@ const createTransporter = () => nodemailer.createTransport({
   tls: { rejectUnauthorized: false },
 });
 
-exports.sendEmail = ({ to, subject, html }) => {
+exports.sendEmail = async ({ to, subject, html }) => {
   if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
     logger.warn(`Email skipped — SMTP not configured (to: ${to})`);
-    return Promise.resolve();
+    return;
   }
-  return createTransporter().sendMail({ from: process.env.EMAIL_FROM, to, subject, html });
+  const transporter = createTransporter();
+  const info = await transporter.sendMail({ from: process.env.EMAIL_FROM, to, subject, html });
+  logger.info(`Email sent to ${to} — messageId: ${info.messageId}`);
+  return info;
+};
+
+exports.verifyConnection = async () => {
+  const transporter = createTransporter();
+  await transporter.verify();
+  logger.info('SMTP connection verified successfully');
 };

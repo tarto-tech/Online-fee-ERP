@@ -61,7 +61,7 @@ const sendWelcomeEmail = (student) => {
         </div>
       </div>
     `,
-  }).catch((err) => logger.error(`Welcome email failed for ${student.email}: ${err.message}`));
+  }).catch((err) => logger.error(`Welcome email failed for ${student.email}: ${err.message} | stack: ${err.stack}`));
 };
 
 const buildFilter = (query) => {

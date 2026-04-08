@@ -43,6 +43,14 @@ const startServer = async () => {
     // Connect to Redis (optional, falls back to in-memory)
     await initRedis();
 
+    // Verify SMTP connection
+    try {
+      const { verifyConnection } = require('./services/emailService');
+      await verifyConnection();
+    } catch (err) {
+      logger.warn(`SMTP verification failed: ${err.message} — emails will not be delivered`);
+    }
+
     // Seed default admin
     logger.info('Checking default admin...');
     await seedDefaultAdmin();

@@ -28,4 +28,19 @@ router.patch(
   adminAuthController.changePassword
 );
 
+// Test email delivery — admin only
+router.post('/test-email', async (req, res, next) => {
+  try {
+    const { sendEmail } = require('../services/emailService');
+    await sendEmail({
+      to: req.user.email,
+      subject: 'Test Email — SMTP Working',
+      html: '<p>If you received this, your SMTP config is working correctly on Render.</p>',
+    });
+    res.json({ status: 'success', message: `Test email sent to ${req.user.email}` });
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;
