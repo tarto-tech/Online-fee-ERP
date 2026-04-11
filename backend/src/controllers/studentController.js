@@ -427,6 +427,8 @@ exports.bulkUpload = catchAsync(async (req, res, next) => {
       await Course.findByIdAndUpdate(courseId, { $inc: { totalStudents: 1 } });
       await student.populate('course', 'name code');
       sendWelcomeEmail(student);
+      // small delay to avoid Gmail rate limiting on bulk sends
+      await new Promise((r) => setTimeout(r, 300));
       created.push(student.studentId);
     } catch (err) {
       errors.push({ row: index + 2, studentId: row.studentId, error: err.message });
