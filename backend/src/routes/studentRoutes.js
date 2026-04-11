@@ -40,5 +40,6 @@ router.route('/:id')
   .delete(studentController.deactivateStudent);
 
 router.delete('/:id/permanent', studentController.deleteStudent);
+router.post('/:id/resend-email', studentController.resendWelcomeEmail);
 
 module.exports = router;

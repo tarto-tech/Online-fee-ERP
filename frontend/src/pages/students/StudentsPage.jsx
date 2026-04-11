@@ -77,6 +77,12 @@ export default function StudentsPage() {
     onError: (err) => toast.error(err.message),
   });
 
+  const resendEmailMutation = useMutation({
+    mutationFn: studentsAPI.resendEmail,
+    onSuccess: (res) => toast.success(res.message || 'Welcome email resent'),
+    onError: (err) => toast.error(err.message),
+  });
+
   const handleBulkUpload = async (file, courseId, currentYear, academicYear) => {
     try {
       const res = await studentsAPI.bulkUpload(file, courseId, currentYear, academicYear);
@@ -195,6 +201,11 @@ export default function StudentsPage() {
                       )}
                       <button className="btn btn-outline" style={{ padding: '4px 10px', fontSize: 13 }}
                         onClick={() => setEditStudent(s)}>Edit</button>
+                      {s.isActive && (
+                        <button className="btn" style={{ padding: '4px 10px', fontSize: 13, background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0' }}
+                          disabled={resendEmailMutation.isPending}
+                          onClick={() => resendEmailMutation.mutate(s._id)}>📧 Resend Email</button>
+                      )}
                       {!s.usn && s.isActive && (
                         <button className="btn" style={{ padding: '4px 10px', fontSize: 13, background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe' }}
                           onClick={() => setUsnStudent(s)}>Assign USN</button>

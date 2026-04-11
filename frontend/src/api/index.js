@@ -14,6 +14,7 @@ export const studentsAPI = {
   deactivate: (id) => api.delete(`/students/${id}`),
   permanentDelete: (id) => api.delete(`/students/${id}/permanent`),
   promote: (data) => api.post('/students/promote', data),
+  resendEmail: (id) => api.post(`/students/${id}/resend-email`),
   bulkUpload: (file, courseId, currentYear, academicYear) => {
     const form = new FormData();
     form.append('file', file);

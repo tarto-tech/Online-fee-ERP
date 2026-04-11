@@ -152,6 +152,14 @@ exports.deactivateStudent = catchAsync(async (req, res, next) => {
   res.json({ status: 'success', message: 'Student deactivated' });
 });
 
+exports.resendWelcomeEmail = catchAsync(async (req, res, next) => {
+  const student = await Student.findById(req.params.id).populate('course', 'name code');
+  if (!student) return next(new AppError('Student not found', 404));
+  if (!student.isActive) return next(new AppError('Student account is inactive', 400));
+  await sendWelcomeEmail(student);
+  res.json({ status: 'success', message: `Welcome email sent to ${student.email}` });
+});
+
 exports.deleteStudent = catchAsync(async (req, res, next) => {
   const student = await Student.findById(req.params.id);
   if (!student) return next(new AppError('Student not found', 404));
